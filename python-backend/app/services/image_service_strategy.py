@@ -46,22 +46,26 @@ class ImageServiceStrategy:
     
     def _register_services(self):
         """注册所有图片服务"""
-        services = [
-            PexelsService(),
-            NanoBananaService(),
-            MermaidService(),
-            IconifyService(),
-            EmojiPackService(),
-            SvgDiagramService(),
+        service_factories = [
+            PexelsService,
+            NanoBananaService,
+            MermaidService,
+            IconifyService,
+            EmojiPackService,
+            SvgDiagramService,
         ]
         
-        for service in services:
-            method = service.get_method()
-            self.service_map[method] = service
-            logger.info(
-                f"注册图片服务: {method.value} -> {service.__class__.__name__} "
-                f"(AI生图: {method.is_ai_generated()}, 降级: {method.is_fallback()})"
-            )
+        for factory in service_factories:
+            try:
+                service = factory()
+                method = service.get_method()
+                self.service_map[method] = service
+                logger.info(
+                    f"注册图片服务: {method.value} -> {service.__class__.__name__} "
+                    f"(AI生图: {method.is_ai_generated()}, 降级: {method.is_fallback()})"
+                )
+            except Exception as e:
+                logger.warning(f"跳过图片服务 {factory.__name__}: {e}")
     
     async def get_image_and_upload(
         self,

@@ -68,5 +68,8 @@ frontend/src/config/env.ts
 *.swp
 *.swo
 *~
+dump.rdb
+tmp_resume/
+python-backend/.venv-manual/
 
 .claude/**

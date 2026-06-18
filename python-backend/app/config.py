@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     # AI 配置（第 3 期新增）
     dashscope_api_key: str
     dashscope_model: str = "qwen-plus"
+    llm_provider: str = "dashscope"
+    llm_api_key: str = ""
+    llm_base_url: str = ""
+    llm_model: str = ""
     
     # Pexels 图片搜索（第 3 期新增）
     pexels_api_key: str
@@ -111,3 +115,28 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def get_llm_api_key() -> str:
+    """获取统一 LLM API Key，优先使用通用配置，兼容旧 DashScope 配置。"""
+    return settings.llm_api_key or settings.dashscope_api_key
+
+
+def get_llm_base_url() -> str:
+    """获取统一 LLM Base URL。"""
+    provider = (settings.llm_provider or "dashscope").lower()
+    if settings.llm_base_url:
+        return settings.llm_base_url
+    if provider == "deepseek":
+        return "https://api.deepseek.com"
+    return "https://dashscope.aliyuncs.com/compatible-mode/v1"
+
+
+def get_llm_model() -> str:
+    """获取统一 LLM 模型名。"""
+    provider = (settings.llm_provider or "dashscope").lower()
+    if settings.llm_model:
+        return settings.llm_model
+    if provider == "deepseek":
+        return "deepseek-chat"
+    return settings.dashscope_model

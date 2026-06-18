@@ -17,17 +17,25 @@ class CosService:
     """腾讯云 COS 服务"""
     
     def __init__(self):
-        # 初始化 COS 客户端
-        config = CosConfig(
-            Region=settings.tencent_cos_region,
-            SecretId=settings.tencent_cos_secret_id,
-            SecretKey=settings.tencent_cos_secret_key,
-            Scheme='https'
+        self.enabled = bool(
+            settings.tencent_cos_secret_id
+            and settings.tencent_cos_secret_key
+            and settings.tencent_cos_bucket
         )
-        self.client = CosS3Client(config)
+        self.client = None
         self.bucket = settings.tencent_cos_bucket
         self.region = settings.tencent_cos_region
         self.http_client = httpx.AsyncClient(timeout=30.0)
+        if self.enabled:
+            config = CosConfig(
+                Region=settings.tencent_cos_region,
+                SecretId=settings.tencent_cos_secret_id,
+                SecretKey=settings.tencent_cos_secret_key,
+                Scheme='https'
+            )
+            self.client = CosS3Client(config)
+        else:
+            logger.warning("COS 未配置，图片将直接使用原始 URL 或降级地址")
     
     async def upload_image(self, image_url: str, folder: str) -> str:
         """
@@ -40,6 +48,8 @@ class CosService:
         Returns:
             COS 图片 URL
         """
+        if not self.enabled or self.client is None:
+            return image_url
         try:
             # 下载图片
             response = await self.http_client.get(image_url)
@@ -85,6 +95,10 @@ class CosService:
         """
         if not image_data or not image_data.is_valid():
             logger.warning("图片数据无效")
+            return None
+        if not self.enabled or self.client is None:
+            if image_data.data_type == DataType.URL:
+                return image_data.url
             return None
         
         try:

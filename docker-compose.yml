@@ -17,9 +17,8 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-ai_passage_creator}
       TZ: ${TZ:-Asia/Shanghai}
-    # 默认不暴露端口到宿主机（更安全），如需外部访问可取消注释
-    # ports:
-    #   - "${MYSQL_PORT:-13306}:3306"
+    ports:
+      - "${MYSQL_PORT:-13306}:3306"
     volumes:
       - mysql-data:/var/lib/mysql
       # SQL 初始化脚本（按文件名字母顺序执行）

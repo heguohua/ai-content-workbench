@@ -9,7 +9,7 @@ from openai import AsyncOpenAI
 
 from app.agent.orchestrator import ArticleAgentOrchestrator
 from app.agent.parallel.image_generator import ParallelImageGenerator
-from app.config import settings
+from app.config import settings, get_llm_api_key, get_llm_base_url, get_llm_model
 from app.constants.prompt import PromptConstant
 from app.database import database
 from app.schemas.article import (
@@ -32,12 +32,12 @@ class ArticleAgentService:
     """文章智能体编排服务"""
     
     def __init__(self):
-        # 初始化 OpenAI 客户端（DashScope 兼容）
+        # 初始化 OpenAI 兼容客户端（支持 DashScope / DeepSeek）
         self.client = AsyncOpenAI(
-            api_key=settings.dashscope_api_key,
-            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+            api_key=get_llm_api_key(),
+            base_url=get_llm_base_url()
         )
-        self.model = settings.dashscope_model
+        self.model = get_llm_model()
         
         # 初始化策略模式（第 5 期改动）
         self.image_service_strategy = ImageServiceStrategy()
@@ -347,7 +347,7 @@ class ArticleAgentService:
     def _parse_json_response(self, content: str, name: str) -> dict:
         """解析 JSON 响应"""
         try:
-            result = json.loads(content)
+            result = json.loads(self._sanitize_json_content(content))
             if not isinstance(result, dict):
                 raise ValueError("响应不是 JSON 对象")
             return result
@@ -361,7 +361,7 @@ class ArticleAgentService:
     def _parse_json_list_response(self, content: str, name: str) -> list:
         """解析 JSON 数组响应"""
         try:
-            result = json.loads(content)
+            result = json.loads(self._sanitize_json_content(content))
             if not isinstance(result, list):
                 raise ValueError("响应不是 JSON 数组")
             return result
@@ -371,6 +371,21 @@ class ArticleAgentService:
         except ValueError as e:
             logger.error(f"{name}解析失败, content={content}, error={e}")
             raise RuntimeError(f"{name}解析失败")
+
+    def _sanitize_json_content(self, content: str) -> str:
+        """清洗 LLM 返回的 JSON 内容，兼容代码块和双花括号格式。"""
+        sanitized = (content or "").strip()
+
+        if sanitized.startswith("```"):
+            lines = sanitized.splitlines()
+            if lines:
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            sanitized = "\n".join(lines).strip()
+
+        sanitized = sanitized.replace("{{", "{").replace("}}", "}")
+        return sanitized
     
     def _build_image_result(
         self,
