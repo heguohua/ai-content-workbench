@@ -13,6 +13,11 @@ const router = createRouter({
       component: HomePage,
     },
     {
+      path: '/workspace',
+      name: '内容工作台',
+      component: () => import('@/pages/workspace/WorkspacePage.vue'),
+    },
+    {
       path: '/create',
       name: '创作文章',
       component: () => import('@/pages/article/ArticleCreatePage.vue'),

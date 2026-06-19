@@ -1,11 +1,12 @@
 import axios from 'axios'
 import { message } from 'ant-design-vue'
-import { API_BASE_URL } from '@/config/env'
 import { REQUEST_TIMEOUT, UNAUTHORIZED_CODE } from '@/constants'
+
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
 
 // 创建 Axios 实例
 const myAxios = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: apiBaseUrl,
   timeout: REQUEST_TIMEOUT,
   withCredentials: true,
 })

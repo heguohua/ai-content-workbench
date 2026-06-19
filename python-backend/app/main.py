@@ -14,6 +14,10 @@ from app.routers import (
     payment_router,
     webhook_router,
     statistics_router,
+    project_router,
+    session_router,
+    skill_router,
+    artifact_router,
 )
 from app.exceptions import BusinessException, ErrorCode
 from app.utils.session import init_redis, close_redis
@@ -89,6 +93,10 @@ app.include_router(article_router, prefix="/api")
 app.include_router(payment_router, prefix="/api")
 app.include_router(webhook_router, prefix="/api")
 app.include_router(statistics_router, prefix="/api")
+app.include_router(project_router, prefix="/api")
+app.include_router(session_router, prefix="/api")
+app.include_router(skill_router, prefix="/api")
+app.include_router(artifact_router, prefix="/api")
 
 
 @app.get("/")

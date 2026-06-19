@@ -2,7 +2,7 @@
 
 import logging
 import asyncio
-from typing import Dict
+from typing import Awaitable, Callable, Dict, Optional, Set
 from fastapi.responses import StreamingResponse
 
 logger = logging.getLogger(__name__)
@@ -12,10 +12,15 @@ class SseEmitterManager:
     """SSE Emitter 管理器"""
     
     def __init__(self):
-        # 存储所有的队列
-        self._queues: Dict[str, asyncio.Queue] = {}
+        # 同一个任务可能被多个浏览器标签订阅。
+        self._queues: Dict[str, Set[asyncio.Queue]] = {}
     
-    def create_emitter(self, task_id: str) -> StreamingResponse:
+    def create_emitter(
+        self,
+        task_id: str,
+        replay_messages: Optional[Callable[[str], Awaitable[list[str]]]] = None,
+        close_after_replay: Optional[Callable[[str], Awaitable[bool]]] = None,
+    ) -> StreamingResponse:
         """
         创建 SSE Emitter
         
@@ -27,13 +32,19 @@ class SseEmitterManager:
         """
         # 创建队列
         queue = asyncio.Queue()
-        self._queues[task_id] = queue
+        self._queues.setdefault(task_id, set()).add(queue)
         
         logger.info(f"SSE 连接已创建, taskId={task_id}")
         
         # 创建事件流生成器
         async def event_generator():
             try:
+                if replay_messages:
+                    for replay_message in await replay_messages(task_id):
+                        yield f"data: {replay_message}\n\n"
+                if close_after_replay and await close_after_replay(task_id):
+                    return
+
                 while True:
                     # 从队列获取消息
                     message = await queue.get()
@@ -50,7 +61,10 @@ class SseEmitterManager:
                 logger.error(f"SSE 连接错误, taskId={task_id}, error={e}")
             finally:
                 # 清理队列
-                if task_id in self._queues:
+                queues = self._queues.get(task_id)
+                if queues:
+                    queues.discard(queue)
+                if task_id in self._queues and not self._queues[task_id]:
                     del self._queues[task_id]
                 logger.info(f"SSE 连接已关闭, taskId={task_id}")
         
@@ -72,13 +86,14 @@ class SseEmitterManager:
             task_id: 任务ID
             message: 消息内容
         """
-        queue = self._queues.get(task_id)
-        if queue is None:
+        queues = self._queues.get(task_id)
+        if not queues:
             logger.warning(f"SSE Emitter 不存在, taskId={task_id}")
             return
         
         try:
-            queue.put_nowait(message)
+            for queue in list(queues):
+                queue.put_nowait(message)
             logger.debug(f"SSE 消息发送成功, taskId={task_id}")
         except Exception as e:
             logger.error(f"SSE 消息发送失败, taskId={task_id}, error={e}")
@@ -90,13 +105,14 @@ class SseEmitterManager:
         Args:
             task_id: 任务ID
         """
-        queue = self._queues.get(task_id)
-        if queue is None:
+        queues = self._queues.get(task_id)
+        if not queues:
             logger.warning(f"SSE Emitter 不存在, taskId={task_id}")
             return
         
         try:
-            queue.put_nowait("__COMPLETE__")
+            for queue in list(queues):
+                queue.put_nowait("__COMPLETE__")
             logger.info(f"SSE 连接已完成, taskId={task_id}")
         except Exception as e:
             logger.error(f"SSE 连接完成失败, taskId={task_id}, error={e}")

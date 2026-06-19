@@ -23,6 +23,20 @@ from app.config import settings
 router = APIRouter(prefix="/user", tags=["用户管理"])
 
 
+def _build_page_response(records, total: int, current: int, page_size: int) -> dict:
+    """兼容前端旧版分页字段。"""
+    return {
+        "records": records,
+        "total": total,
+        "current": current,
+        "size": page_size,
+        "pageNumber": current,
+        "pageSize": page_size,
+        "totalRow": total,
+        "totalPage": (total + page_size - 1) // page_size if page_size > 0 else 0,
+    }
+
+
 @router.post("/register", response_model=BaseResponse[int])
 async def register(
     request: UserRegisterRequest,
@@ -102,13 +116,25 @@ async def list_users_by_page(
     """分页查询用户列表（管理员）"""
     service = UserService(db)
     users, total = await service.list_by_page(request)
-    
-    return BaseResponse.success(data={
-        "records": users,
-        "total": total,
-        "current": request.current,
-        "size": request.page_size
-    })
+
+    return BaseResponse.success(
+        data=_build_page_response(users, total, request.current, request.page_size)
+    )
+
+
+@router.post("/list/page/vo", response_model=BaseResponse[dict])
+async def list_user_vo_by_page(
+    request: UserQueryRequest,
+    db: Database = Depends(get_db),
+    _: LoginUserVO = Depends(require_admin)
+):
+    """兼容旧前端的分页查询用户列表接口。"""
+    service = UserService(db)
+    users, total = await service.list_by_page(request)
+
+    return BaseResponse.success(
+        data=_build_page_response(users, total, request.current, request.page_size)
+    )
 
 
 @router.post("/add", response_model=BaseResponse[int])

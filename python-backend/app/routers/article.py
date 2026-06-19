@@ -26,6 +26,20 @@ from app.exceptions import ErrorCode, throw_if
 router = APIRouter(prefix="/article", tags=["文章管理"])
 
 
+def _build_page_response(records, total: int, current: int, page_size: int) -> dict:
+    """兼容前端旧版分页字段。"""
+    return {
+        "records": records,
+        "total": total,
+        "current": current,
+        "size": page_size,
+        "pageNumber": current,
+        "pageSize": page_size,
+        "totalRow": total,
+        "totalPage": (total + page_size - 1) // page_size if page_size > 0 else 0,
+    }
+
+
 @router.post("/create", response_model=BaseResponse[str])
 async def create_article(
     request: ArticleCreateRequest,
@@ -110,13 +124,10 @@ async def list_article(
     """分页查询文章列表"""
     service = ArticleService(db)
     articles, total = await service.list_article_by_page(request, current_user)
-    
-    return BaseResponse.success(data={
-        "records": articles,
-        "total": total,
-        "current": request.current,
-        "size": request.page_size
-    })
+
+    return BaseResponse.success(
+        data=_build_page_response(articles, total, request.current, request.page_size)
+    )
 
 
 @router.post("/delete", response_model=BaseResponse[bool])

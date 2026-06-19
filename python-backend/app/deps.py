@@ -9,9 +9,9 @@ from app.schemas.user import LoginUserVO
 from app.utils.session import get_session
 
 
-async def get_session_id(session_id: Optional[str] = Cookie(None, alias="SESSION")) -> Optional[str]:
+async def get_session_id(session_cookie: Optional[str] = Cookie(None, alias="SESSION")) -> Optional[str]:
     """从 Cookie 中获取 Session ID"""
-    return session_id
+    return session_cookie
 
 
 async def get_current_user(

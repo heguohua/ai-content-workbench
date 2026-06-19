@@ -1,7 +1,7 @@
 """通用请求/响应模型"""
 
 from typing import TypeVar, Generic, Optional, Any
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 
 T = TypeVar("T")
@@ -27,9 +27,21 @@ class BaseResponse(BaseModel, Generic[T]):
 
 class PageRequest(BaseModel):
     """分页请求"""
-    
-    current: int = Field(default=1, ge=1, description="当前页码")
-    page_size: int = Field(default=10, ge=1, le=100, alias="pageSize", description="每页大小")
+
+    current: int = Field(
+        default=1,
+        ge=1,
+        validation_alias=AliasChoices("current", "pageNum", "pageNumber"),
+        description="当前页码",
+    )
+    page_size: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        validation_alias=AliasChoices("pageSize", "size"),
+        alias="pageSize",
+        description="每页大小",
+    )
     sort_field: Optional[str] = Field(default=None, alias="sortField", description="排序字段")
     sort_order: Optional[str] = Field(default="descend", alias="sortOrder", description="排序顺序")
 

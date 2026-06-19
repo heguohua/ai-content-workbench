@@ -1,13 +1,13 @@
 <template>
   <a-layout class="basic-layout">
     <!-- 顶部导航栏 -->
-    <GlobalHeader />
+    <GlobalHeader v-if="!$route.path.startsWith('/workspace')" />
     <!-- 主要内容区域 -->
     <a-layout-content class="main-content">
       <router-view />
     </a-layout-content>
     <!-- 底部版权信息 -->
-    <GlobalFooter />
+    <GlobalFooter v-if="!$route.path.startsWith('/workspace')" />
   </a-layout>
 </template>
 
